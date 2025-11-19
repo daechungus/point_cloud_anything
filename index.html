@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Particle Cloud</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #0a0a0f;
+        overflow: hidden;
+        color: white;
+      }
+
+      #app {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .controls {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: rgba(10, 10, 15, 0.85);
+        padding: 20px;
+        border-radius: 12px;
+        font-size: 14px;
+        z-index: 100;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        max-width: 300px;
+      }
+
+      .controls h3 {
+        margin: 0 0 15px 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .controls label {
+        display: block;
+        margin: 15px 0 8px 0;
+        font-size: 13px;
+        color: #aaa;
+        font-weight: 500;
+      }
+
+      .controls input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .controls input[type="file"]::file-selector-button {
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        margin-right: 8px;
+      }
+
+      .controls input[type="file"]::file-selector-button:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .controls button {
+        width: 100%;
+        margin-top: 12px;
+        padding: 10px;
+        background: rgba(74, 144, 226, 0.3);
+        border: 1px solid rgba(74, 144, 226, 0.5);
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .controls button:hover {
+        background: rgba(74, 144, 226, 0.5);
+        border-color: rgba(74, 144, 226, 0.7);
+      }
+
+      #status {
+        margin-top: 12px;
+        padding: 8px;
+        font-size: 12px;
+        color: #888;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        min-height: 20px;
+      }
+
+      .info {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 12px;
+        background: rgba(10, 10, 15, 0.7);
+        padding: 12px 16px;
+        border-radius: 8px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .info p {
+        margin: 4px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="controls">
+        <h3>Particle Image</h3>
+        <p style="font-size: 12px; color: #888; margin-bottom: 15px;">
+          Upload an image to convert it to floating particles
+        </p>
+        
+        <label>1. Select Image:</label>
+        <input type="file" id="imageInput" accept="image/*">
+        
+        <label>2. Select Depth Map (optional):</label>
+        <input type="file" id="depthInput" accept="image/png">
+        <p style="font-size: 11px; color: #666; margin: 4px 0 8px 0;">
+          Use Depth Anything 3 to generate. See DEPTH_SETUP.md
+        </p>
+        
+        <button id="loadBtn" style="background: rgba(74, 144, 226, 0.4); margin-bottom: 8px;">Load Particles</button>
+        <button id="resetBtn">Reset to Default</button>
+        
+        <div id="status"></div>
+      </div>
+      
+      <div class="info">
+        <p><strong>Controls:</strong></p>
+        <p>• Drag to rotate</p>
+        <p>• Scroll to zoom</p>
+        <p>• Right-click drag to pan</p>
+      </div>
+    </div>
+    
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

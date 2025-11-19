@@ -1,0 +1,138 @@
+# Quick Start: Using Depth Maps
+
+## TL;DR
+
+1. **Run your app**: `npm run dev`
+2. **Test with brightness**: Upload any image → Click "Load Particles"
+3. **Use real depth**: Generate depth map → Upload both → Click "Load Particles"
+
+---
+
+## Option 1: Brightness-Based Depth (No Setup Required)
+
+This works out of the box!
+
+1. Start the app: `npm run dev`
+2. Click "1. Select Image" and choose your photo
+3. Click "Load Particles"
+4. Done! Uses brightness as fake depth
+
+**Pros:** No setup, works immediately
+**Cons:** Depth isn't realistic (bright ≠ close)
+
+---
+
+## Option 2: Real Depth with Depth Anything 3
+
+For **realistic 3D parallax**, generate a real depth map:
+
+### Setup (One Time Only)
+
+See `DEPTH_SETUP.md` for full instructions. Quick version:
+
+```bash
+# 1. Install PyTorch
+pip install torch torchvision
+
+# 2. Clone and install DA3
+git clone https://github.com/ByteDance-Seed/Depth-Anything-3.git
+cd Depth-Anything-3
+pip install -e .[all]
+
+# 3. Copy generation script
+cp ../generate_depth.py .
+```
+
+### Generate Depth Map
+
+```bash
+# From Depth-Anything-3 directory
+python generate_depth.py path/to/your/image.jpg
+```
+
+This creates `public/depth/yourimage_depth.png`
+
+### Use in App
+
+1. Start app: `npm run dev`
+2. Select your **original image**
+3. Select the generated **_depth.png** file
+4. Click "Load Particles"
+5. 🎉 Real 3D depth!
+
+---
+
+## How to Tell the Difference
+
+### Brightness-Based:
+- Bright areas appear closer
+- Flat, 2D-like when you rotate
+- Quick, no preprocessing
+
+### DA3 Depth-Based:
+- **Real geometry**: bridges in front, mountains behind
+- **True parallax**: dramatic 3D effect when rotating
+- **Proper occlusion**: foreground naturally covers background
+- Requires preprocessing (~5-30 seconds per image)
+
+---
+
+## Your Settings
+
+You've already configured:
+- **Skip**: 2 pixels (more particles)
+- **Spread**: 6× (larger scene)
+- **Depth amplification**: 0.9× (brightness) or 1.5× (DA3)
+- **Particle size**: 0.3-0.4 (subtle)
+
+These work for both modes!
+
+---
+
+## Example Workflow
+
+### Korean Palace Photo (hanok.jpg):
+
+```bash
+# Generate depth
+cd Depth-Anything-3
+python generate_depth.py ../public/images/hanok.jpg
+
+# Output: public/depth/hanok_depth.png
+```
+
+Then in the browser:
+1. Upload `hanok.jpg`
+2. Upload `hanok_depth.png`
+3. Click "Load Particles"
+4. Rotate camera → see real depth!
+
+---
+
+## Troubleshooting
+
+**"No depth map selected"**
+→ Both image AND depth map must be selected before clicking Load
+
+**"Depth looks inverted"**
+→ In `main.js` line 156, change `(1.0 - d)` to just `d`
+
+**"Particles too sparse"**
+→ Change `skip` from 2 to 1 (line 120)
+
+**"Not enough depth"**
+→ Increase multiplier on line 157: `nz *= 3.0` instead of `1.5`
+
+**"Python script failed"**
+→ Check `DEPTH_SETUP.md` for installation steps
+
+---
+
+## Performance Notes
+
+- **Depth generation**: 1-30 seconds (one-time, offline)
+- **Browser loading**: Same speed (depth map is just another image)
+- **Rendering**: No performance difference
+
+Generate depth maps once, reuse forever!
+
