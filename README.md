@@ -5,117 +5,117 @@ Convert any image into an animated 3D particle cloud, inspired by [Penderecki's 
 ## Features
 
 - **Image to Particles** - Converts any image into thousands of colored particles
-- **3D Depth Mapping** - Uses brightness to create depth (lighter = closer)
-- **Floating Animation** - Gentle wave-like motion for atmospheric effect
+- **DA3 3D Model Mode** - Uses Depth Anything 3's full pipeline: predicted camera intrinsics/extrinsics, confidence filtering → proper GLB 3D model → point cloud
+- **Dual View Toggle** - Switch between animated particle cloud and raw 3D mesh
+- **Brightness Depth Fallback** - Works without a backend using brightness as depth
+- **Point Cloud Support** - Load PLY, XYZ, JSON, NPY files directly
+- **Floating Animation** - Gentle wave-like motion with box-to-shape entry animation
 - **Interactive Camera** - Orbit, zoom, and pan with mouse controls
-- **Soft Particle Rendering** - Custom shaders for smooth, glowing particles
-- **Atmospheric Design** - Dark background with fog for depth
+- **Soft Particle Rendering** - Custom GLSL shaders for smooth, glowing particles
+- **Real-time Adjustments** - 7 sliders to control appearance without reloading
 
-## Quick Start
+## Running
 
+You need **two terminals**:
+
+**Terminal 1 — Python API backend:**
 ```bash
-# Install dependencies
-npm install
+cd point_cloud_anything
+python api_server.py
+```
+Wait for `✓ Model loaded and ready`. The first run downloads the DA3 model (~500MB).
 
-# Start dev server
+**Terminal 2 — Frontend:**
+```bash
+cd point_cloud_anything
+npm install   # first time only
 npm run dev
-
-# Build for production
-npm run build
 ```
 
-### Two Modes:
+Open `http://localhost:5173` in your browser.
 
-1. **Brightness-based depth** (default) - Works immediately, uses pixel brightness as fake depth
-2. **Real depth from Depth Anything 3** - Requires Python setup, generates accurate 3D geometry
+> The frontend works without the backend (falls back to brightness-based depth), but the DA3 3D Model mode requires the API server.
 
-See `QUICKSTART_DEPTH.md` for details.
+## Input Modes
 
-## Usage
+### 1. Image + Optional Depth
+Uses brightness as depth by default. If the API server is running, it automatically generates a depth map via DA3 when you upload an image.
 
-1. **Default View**: Opens with an abstract gradient particle cloud
-2. **Load Image**: Click "Load Image" to upload your own photo
-3. **Reset**: Click "Reset to Default" to return to the gradient
-4. **Navigate**: 
-   - Drag to rotate
-   - Scroll to zoom
-   - Right-click drag to pan
+1. Select **"Image + Optional Depth"** mode
+2. Upload an image — depth map is generated automatically if the API is running
+3. Click **"Load Particles"**
+4. Adjust sliders and click **"Reload with Settings"** to fine-tune
 
-## How It Works
+### 2. Direct Point Cloud
+Load a pre-existing point cloud file.
 
-1. **Image Loading** - Loads image and draws to off-screen canvas
-2. **Pixel Sampling** - Samples every 2nd pixel (adjustable in code)
-3. **Position Mapping** - Maps (x,y) to 3D coordinates, brightness to z-depth
-4. **Color Extraction** - Uses RGB values for particle colors (slightly desaturated)
-5. **GPU Rendering** - Custom vertex/fragment shaders for smooth animation
+1. Select **"Direct Point Cloud"** mode
+2. Upload a file (`.ply`, `.xyz`, `.pts`, `.json`, `.npy`)
+3. Click **"Load Particles"**
 
-## Customization
+### 3. DA3 3D Model (GLB) — requires API server
+The highest-quality mode. Sends your image through DA3's full 3D reconstruction pipeline, which uses the model's predicted camera intrinsics/extrinsics and confidence filtering to produce an accurate GLB point cloud. The result is displayed as animated particles, with an option to view the raw 3D mesh.
 
-### Adjust Particle Count
+1. Select **"DA3 3D Model (GLB)"** mode
+2. Upload an image
+3. Click **"Load Particles"** — takes ~10–30 seconds (longer on first model load)
+4. Use **"Toggle: Particles / Mesh"** to switch between views
 
-In `main.js`, line 68:
-```js
-const targetWidth = 600; // Higher = more particles
-const skip = 2; // Lower = more particles
+## Controls
+
+| Input | Action |
+|-------|--------|
+| Left-click drag | Rotate |
+| Scroll | Zoom |
+| Right-click drag | Pan |
+
+## Particle Settings (real-time sliders)
+
+| Parameter | Range | Effect |
+|-----------|-------|--------|
+| **Particle Count** | 1–10 | Lower = more particles (denser) |
+| **Spread** | 1–20 | Scene size |
+| **Depth Strength** | 0–5 | 3D depth effect |
+| **Particle Size** | 0.1–1.0 | Base size of points |
+| **Size Variation** | 0–0.5 | Random size differences |
+| **Aspect X** | 0.1–3.0 | Horizontal stretch |
+| **Aspect Y** | 0.1–3.0 | Vertical stretch |
+
+Adjust sliders, then click **"Reload with Settings"** to apply.
+
+## Architecture
+
+```
+point_cloud_anything/
+├── main.js              # Three.js scene, particle shaders, all input modes
+├── pointCloudLoader.js  # PLY / XYZ / JSON / NPY parser
+├── api_server.py        # FastAPI backend — DA3 depth + GLB endpoints
+├── index.html           # UI controls
+└── public/
+    ├── images/          # Sample images
+    └── depth/           # Sample depth maps
 ```
 
-### Change Animation Speed
+### API Endpoints (port 8000)
 
-In `main.js`, line 131:
-```js
-float offset = sin(uTime * 0.5 + ...) * 0.02;
-//                        ^^^          ^^^^
-//                       speed       amplitude
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/generate-depth` | Returns DA3 depth map as NPY + PNG |
+| `POST /api/generate-point-cloud` | Returns simple back-projected PLY |
+| `POST /api/generate-glb` | Returns full DA3 GLB using model camera intrinsics + confidence filtering |
+
+Interactive API docs available at `http://localhost:8000/docs`.
+
+### DA3 GLB Pipeline
+
 ```
-
-### Modify Depth Effect
-
-In `main.js`, line 95:
-```js
-const nz = (brightness - 0.5) * 0.3; // Adjust 0.3 for more/less depth
+image → DA3 inference (predicted intrinsics/extrinsics + confidence map)
+      → export_to_glb (confidence filtering, up to 500k points, proper 3D back-projection)
+      → GLB binary (base64) → GLTFLoader → extract vertices
+      → normalise to scene scale → animated particle cloud + raw mesh toggle
 ```
-
-### Change Background
-
-In `main.js`, line 21:
-```js
-scene.background = new THREE.Color(0x0a0a0f); // Dark blue-purple
-```
-
-## Technical Details
-
-- **Particle Count**: ~90,000 particles (600×450 image sampled every 2 pixels)
-- **Rendering**: WebGL with Three.js
-- **Shaders**: Custom GLSL for vertex animation and soft particles
-- **Performance**: 60fps on modern GPUs
-- **Memory**: ~20MB for typical image
-
-## Comparison to Penderecki's Garden
-
-**This Implementation:**
-- ✅ Single 2D image input
-- ✅ Brightness-based depth
-- ✅ Floating particle animation
-- ✅ Interactive camera controls
-- ✅ Atmospheric rendering
-
-**Penderecki's Garden:**
-- Uses photogrammetry point cloud scans
-- Real 3D geometry from drones
-- Audio-reactive animations
-- Multiple viewpoints with hotspots
-- Professional production quality
-
-## Next Steps
-
-To get closer to Penderecki's Garden:
-
-1. **Audio Reactivity** - Add Web Audio API for music-driven animation
-2. **Multiple Views** - Create camera waypoints with smooth transitions
-3. **UI Overlays** - Add text/audio hotspots anchored to 3D positions
-4. **Real Point Clouds** - Use `.ply` or `.las` files from photogrammetry
-5. **Advanced Shaders** - Distance-based fading, noise-driven motion
 
 ## Credits
 
-Inspired by [Penderecki's Garden](https://pendereckisgarden.pl) - an award-winning WebGL experience by Immersion.
+Inspired by [Penderecki's Garden](https://pendereckisgarden.pl) — an award-winning WebGL experience by Immersion.
+Depth estimation by [Depth Anything 3](https://github.com/ByteDance-Seed/Depth-Anything-3) (ByteDance).

@@ -12,6 +12,7 @@
     "vite": "^5.0.8"
   },
   "dependencies": {
+    "npyjs": "^1.0.4",
     "three": "^0.160.0"
   }
 }

@@ -34,14 +34,16 @@
         position: absolute;
         top: 20px;
         left: 20px;
-        background: rgba(10, 10, 15, 0.85);
+        background: rgba(10, 10, 15, 0.9);
         padding: 20px;
         border-radius: 12px;
         font-size: 14px;
         z-index: 100;
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        max-width: 300px;
+        max-width: 320px;
+        max-height: 90vh;
+        overflow-y: auto;
       }
 
       .controls h3 {
@@ -53,10 +55,17 @@
 
       .controls label {
         display: block;
-        margin: 15px 0 8px 0;
-        font-size: 13px;
+        margin: 12px 0 6px 0;
+        font-size: 12px;
         color: #aaa;
         font-weight: 500;
+      }
+      
+      .controls label span {
+        float: right;
+        color: #4ade80;
+        font-weight: 600;
+        font-size: 11px;
       }
 
       .controls input[type="file"] {
@@ -83,10 +92,15 @@
       .controls input[type="file"]::file-selector-button:hover {
         background: rgba(255, 255, 255, 0.15);
       }
+      
+      .controls input[type="range"] {
+        width: 100%;
+        margin: 6px 0 4px 0;
+      }
 
       .controls button {
         width: 100%;
-        margin-top: 12px;
+        margin-top: 10px;
         padding: 10px;
         background: rgba(74, 144, 226, 0.3);
         border: 1px solid rgba(74, 144, 226, 0.5);
@@ -113,6 +127,29 @@
         border: 1px solid rgba(255, 255, 255, 0.05);
         min-height: 20px;
       }
+      
+      .controls details {
+        margin-top: 20px;
+      }
+      
+      .controls details summary {
+        padding: 10px 0;
+        color: #ccc;
+        cursor: pointer;
+        font-weight: 600;
+        user-select: none;
+        list-style: none;
+      }
+      
+      .controls details summary:hover {
+        color: #fff;
+      }
+      
+      .controls details[open] summary {
+        margin-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 12px;
+      }
 
       .info {
         position: absolute;
@@ -135,24 +172,77 @@
   <body>
     <div id="app">
       <div class="controls">
-        <h3>Particle Image</h3>
+        <h3>Particle Cloud Viewer</h3>
         <p style="font-size: 12px; color: #888; margin-bottom: 15px;">
-          Upload an image to convert it to floating particles
+          Load from image or point cloud file
         </p>
         
-        <label>1. Select Image:</label>
-        <input type="file" id="imageInput" accept="image/*">
-        
-        <label>2. Select Depth Map (optional):</label>
-        <input type="file" id="depthInput" accept="image/png">
-        <p style="font-size: 11px; color: #666; margin: 4px 0 8px 0;">
-          Use Depth Anything 3 to generate. See DEPTH_SETUP.md
-        </p>
-        
+        <label>Input Mode:</label>
+        <select id="loadMode" style="width: 100%; padding: 8px; margin-bottom: 15px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: white; font-size: 13px; cursor: pointer;">
+          <option value="image">Image + Optional Depth</option>
+          <option value="pointcloud">Direct Point Cloud</option>
+          <option value="da3glb">DA3 3D Model (GLB)</option>
+        </select>
+
+        <div id="imageInputs">
+          <label>1. Select Image:</label>
+          <input type="file" id="imageInput" accept="image/*">
+
+          <label>2. Select Depth Map (optional):</label>
+          <input type="file" id="depthInput" accept="image/png">
+          <p style="font-size: 11px; color: #666; margin: 4px 0 8px 0;">
+            From Depth Anything 3 or 3D Point Cloud Anything
+          </p>
+        </div>
+
+        <div id="pointCloudInputs" style="display: none;">
+          <label>Select Point Cloud:</label>
+          <input type="file" id="pointCloudInput" accept=".ply,.xyz,.pts,.json,.npy">
+          <p style="font-size: 11px; color: #666; margin: 4px 0 8px 0;">
+            Supports PLY, XYZ, PTS, JSON, NPY formats
+          </p>
+        </div>
+
+        <div id="da3Inputs" style="display: none;">
+          <label>Select Image:</label>
+          <input type="file" id="da3ImageInput" accept="image/*">
+          <p style="font-size: 11px; color: #666; margin: 4px 0 8px 0;">
+            Sends image to DA3 API. Returns a proper 3D GLB model using predicted camera intrinsics + confidence filtering.
+          </p>
+        </div>
+
         <button id="loadBtn" style="background: rgba(74, 144, 226, 0.4); margin-bottom: 8px;">Load Particles</button>
+        <button id="toggleViewBtn" style="display: none; background: rgba(251, 146, 60, 0.4); border: 1px solid rgba(251, 146, 60, 0.5); margin-bottom: 8px;">Toggle: Particles / Mesh</button>
+        <button id="reloadBtn" style="background: rgba(155, 89, 182, 0.4); margin-bottom: 8px;">Reload with Settings</button>
+        <button id="exportBtn" style="background: rgba(34, 197, 94, 0.4); margin-bottom: 8px;">Export as Canvas</button>
         <button id="resetBtn">Reset to Default</button>
         
         <div id="status"></div>
+        
+        <details open>
+          <summary>⚙️ Particle Settings</summary>
+          
+          <label>Particle Count <span id="skipValue">2 (≈67,500)</span></label>
+          <input type="range" id="skipSlider" min="1" max="10" step="1" value="2">
+          
+          <label>Spread <span id="spreadValue">6.0</span></label>
+          <input type="range" id="spreadSlider" min="1" max="20" step="0.5" value="6">
+          
+          <label>Depth Strength <span id="depthValue">1.5</span></label>
+          <input type="range" id="depthSlider" min="0" max="5" step="0.1" value="1.5">
+          
+          <label>Particle Size <span id="sizeMinValue">0.30</span></label>
+          <input type="range" id="sizeMinSlider" min="0.1" max="1.0" step="0.05" value="0.3">
+          
+          <label>Size Variation <span id="sizeRangeValue">0.10</span></label>
+          <input type="range" id="sizeRangeSlider" min="0" max="0.5" step="0.05" value="0.1">
+          
+          <label>Aspect X <span id="aspectXValue">1.00</span></label>
+          <input type="range" id="aspectXSlider" min="0.1" max="3" step="0.1" value="1">
+          
+          <label>Aspect Y <span id="aspectYValue">1.00</span></label>
+          <input type="range" id="aspectYSlider" min="0.1" max="3" step="0.1" value="1">
+        </details>
       </div>
       
       <div class="info">
